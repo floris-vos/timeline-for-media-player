@@ -1,0 +1,87 @@
+from tkinter import Canvas
+
+class Timeline(Canvas):
+    def __init__(self, master=None, *, command=None, to=100,from_=0,**kwargs):
+        super().__init__(master, **kwargs)
+        self.min_value = from_
+        self.max_value = to
+        self.value = 0
+        self.slider_width = 10
+        self.command_flag = 0
+        self.buffer_value = 0
+        self.command = command
+        self.height = 10  
+        self.configure(height=self.height)
+        relation = self.value / self.winfo_toplevel().winfo_width()
+        self.real_value = self.min_value + relation * (self.max_value-self.min_value)     
+        self.set_resolution()
+        self.slider = self.create_rectangle(self.value, 0, self.value + self.slider_width, self.height, fill='gray', tags='slider')
+        self.left_side = self.create_rectangle(0, 0, self.value,self.height, fill='black', tags='left_side')        
+        self.right_side = self.create_rectangle(self.value + self.slider_width, 0, self.winfo_toplevel().winfo_width(), self.height, fill='red', tags='right_side')
+        self.buffer = self.create_rectangle(self.value + self.slider_width, 2,self.value + self.slider_width + self.buffer_value , self.height-2, fill='blue', tags='buffer')
+        self.bind('<Configure>', self.set_resolution)
+        self.bind('<Button-1>', self.on_event)
+        self.bind('<B1-Motion>', self.on_event)
+
+    def set_resolution(self, event = None):
+        root_width = self.winfo_toplevel().winfo_width()
+        self.value = (self.real_value / (self.max_value-self.min_value)) * self.winfo_toplevel().winfo_width()
+        self.value= max(0, min(self.winfo_toplevel().winfo_width()-10, self.value))
+        self.set_coords()
+
+    def set_slider(self):
+        self.set_coords()
+        relation = self.value / self.winfo_toplevel().winfo_width()
+        self.real_value = self.min_value + relation * (self.max_value-self.min_value)
+
+    def set_coords(self):
+        self.coords('slider', self.value, 0, self.value + self.slider_width, self.height)
+        self.coords('left_side', 0,0,self.value,self.height)
+        self.coords('right_side', self.value + self.slider_width,0,self.winfo_toplevel().winfo_width(),self.height)
+        self.coords('buffer', self.value + self.slider_width, 2,self.value + self.slider_width + self.buffer_value , self.height-2)
+
+    def on_event(self, event):
+        self.value = max(0, min(self.winfo_toplevel().winfo_width()-10, event.x))
+        self.set_slider()
+        if self.command and self.command_flag == 0:
+            self.command_flag = 1
+            self.after(200, self.execute_command)
+
+    def execute_command(self):
+        self.command()
+        relation = self.value / self.winfo_toplevel().winfo_width()
+        self.real_value = self.min_value + relation * (self.max_value-self.min_value)
+        print(self.real_value)
+        self.command_flag = 0
+
+    def get(self):
+        relation = self.value / self.winfo_toplevel().winfo_width()
+        return relation * (self.max_value-self.min_value)
+
+    def set(self, value = False, buffer = 0):
+        if buffer:
+            self.buffer_value = buffer
+            relation = buffer / (self.max_value-self.min_value)
+            buffer = relation * self.winfo_toplevel().winfo_width()
+            self.buffer_value= max(0, min(self.winfo_toplevel().winfo_width()-10, self.value))
+        if value:
+            relation = value / (self.max_value-self.min_value)
+            self.value = relation * self.winfo_toplevel().winfo_width()
+            self.value= max(0, min(self.winfo_toplevel().winfo_width()-10, self.value))
+        if value or buffer:
+            self.set_slider()
+
+    def config(self, **kwargs):
+        relation = self.value / self.winfo_toplevel().winfo_width()
+        self.real_value = self.min_value + relation * (self.max_value-self.min_value)
+
+        for key, value in kwargs.items():
+            if key == 'from_':
+                self.min_value = value
+            elif key == 'to':
+                self.max_value = value
+            elif key == 'value':
+                self.real_value = value
+        self.value = (self.real_value / (self.max_value-self.min_value)) * self.winfo_toplevel().winfo_width()
+        self.value= max(0, min(self.winfo_toplevel().winfo_width()-10, self.value))
+        self.set_coords()
